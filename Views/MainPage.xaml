@@ -1,0 +1,187 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ConvertisseurDevises.Views.MainPage"
+             Title="ConvertisseurDevises"
+             NavigationPage.HasNavigationBar="False"
+             SafeAreaEdges="Container"
+             BackgroundColor="{StaticResource DisplayColor}">
+
+    <Grid RowDefinitions="2.4*,2.4*,10.9*,2.6*" RowSpacing="0">
+
+        <!-- ================= LIGNE 1 (devise du haut) ================= -->
+        <Grid Grid.Row="0"
+              ColumnDefinitions="Auto,*"
+              Padding="22,8"
+              BackgroundColor="{StaticResource DisplayColor}">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding SelectRowCommand}" CommandParameter="0" />
+            </Grid.GestureRecognizers>
+
+            <!-- Drapeau + code : touche pour ouvrir la liste des devises -->
+            <VerticalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="6" MinimumWidthRequest="80">
+                <VerticalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding PickCurrencyCommand}" CommandParameter="0" />
+                </VerticalStackLayout.GestureRecognizers>
+                <Border WidthRequest="44" HeightRequest="44" StrokeThickness="0"
+                        HorizontalOptions="Start"
+                        BackgroundColor="{StaticResource KeyFuncColor}">
+                    <Border.StrokeShape>
+                        <Ellipse />
+                    </Border.StrokeShape>
+                    <Image Source="{Binding TopCurrency.FlagUrl}" Aspect="AspectFill" />
+                </Border>
+                <Label Text="{Binding TopCurrency.Code}"
+                       FontSize="18" FontAttributes="Bold"
+                       TextColor="{StaticResource TextColor}" />
+            </VerticalStackLayout>
+
+            <Label Grid.Column="1"
+                   Text="{Binding TopText}"
+                   FontSize="{Binding TopFontSize}"
+                   TextColor="{StaticResource TextColor}"
+                   HorizontalOptions="Fill"
+                   HorizontalTextAlignment="End"
+                   VerticalOptions="Center"
+                   LineBreakMode="NoWrap" />
+
+            <BoxView Grid.ColumnSpan="2" HeightRequest="1" VerticalOptions="End"
+                     Color="{StaticResource SeparatorColor}" />
+        </Grid>
+
+        <!-- ================= LIGNE 2 (devise du bas) ================= -->
+        <Grid Grid.Row="1"
+              ColumnDefinitions="Auto,*"
+              Padding="22,8"
+              BackgroundColor="{StaticResource DisplayColor}">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding SelectRowCommand}" CommandParameter="1" />
+            </Grid.GestureRecognizers>
+
+            <VerticalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="6" MinimumWidthRequest="80">
+                <VerticalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding PickCurrencyCommand}" CommandParameter="1" />
+                </VerticalStackLayout.GestureRecognizers>
+                <Border WidthRequest="44" HeightRequest="44" StrokeThickness="0"
+                        HorizontalOptions="Start"
+                        BackgroundColor="{StaticResource KeyFuncColor}">
+                    <Border.StrokeShape>
+                        <Ellipse />
+                    </Border.StrokeShape>
+                    <Image Source="{Binding BottomCurrency.FlagUrl}" Aspect="AspectFill" />
+                </Border>
+                <Label Text="{Binding BottomCurrency.Code}"
+                       FontSize="18" FontAttributes="Bold"
+                       TextColor="{StaticResource TextColor}" />
+            </VerticalStackLayout>
+
+            <Label Grid.Column="1"
+                   Text="{Binding BottomText}"
+                   FontSize="{Binding BottomFontSize}"
+                   TextColor="{StaticResource TextColor}"
+                   HorizontalOptions="Fill"
+                   HorizontalTextAlignment="End"
+                   VerticalOptions="Center"
+                   LineBreakMode="NoWrap" />
+        </Grid>
+
+        <!-- ================= MESSAGE D'ERREUR (par-dessus les 2 lignes) ================= -->
+        <Border Grid.Row="0" Grid.RowSpan="2"
+                IsVisible="{Binding HasError}"
+                VerticalOptions="Start"
+                Margin="16,12,16,0"
+                Padding="14"
+                BackgroundColor="{StaticResource ErrorBgColor}"
+                Stroke="{StaticResource ErrorColor}"
+                StrokeThickness="1">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="14" />
+            </Border.StrokeShape>
+            <Label Text="{Binding ErrorMessage, StringFormat='⚠️  {0}'}"
+                   TextColor="{StaticResource TextColor}"
+                   FontSize="14" />
+        </Border>
+
+        <!-- ================= CLAVIER ================= -->
+        <Grid Grid.Row="2"
+              ColumnDefinitions="*,*,*,*"
+              RowDefinitions="*,*,*,*,*"
+              ColumnSpacing="1" RowSpacing="1"
+              BackgroundColor="{StaticResource DisplayColor}">
+
+            <!-- Ligne 1 -->
+            <Button Grid.Row="0" Grid.Column="0" Text="C" Style="{StaticResource KeyFunc}" Command="{Binding KeyCommand}" CommandParameter="C" />
+            <Button Grid.Row="0" Grid.Column="1" Text="←" Style="{StaticResource KeyFunc}" Command="{Binding KeyCommand}" CommandParameter="←" />
+            <Button Grid.Row="0" Grid.Column="2" Text="⇅" Style="{StaticResource KeyFunc}" Command="{Binding KeyCommand}" CommandParameter="⇅" />
+            <Button Grid.Row="0" Grid.Column="3" Text="÷" Style="{StaticResource KeyOp}" Command="{Binding KeyCommand}" CommandParameter="÷" />
+
+            <!-- Ligne 2 -->
+            <Button Grid.Row="1" Grid.Column="0" Text="7" Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="7" />
+            <Button Grid.Row="1" Grid.Column="1" Text="8" Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="8" />
+            <Button Grid.Row="1" Grid.Column="2" Text="9" Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="9" />
+            <Button Grid.Row="1" Grid.Column="3" Text="×" Style="{StaticResource KeyOp}" Command="{Binding KeyCommand}" CommandParameter="×" />
+
+            <!-- Ligne 3 -->
+            <Button Grid.Row="2" Grid.Column="0" Text="4" Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="4" />
+            <Button Grid.Row="2" Grid.Column="1" Text="5" Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="5" />
+            <Button Grid.Row="2" Grid.Column="2" Text="6" Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="6" />
+            <Button Grid.Row="2" Grid.Column="3" Text="−" Style="{StaticResource KeyOp}" Command="{Binding KeyCommand}" CommandParameter="−" />
+
+            <!-- Ligne 4 -->
+            <Button Grid.Row="3" Grid.Column="0" Text="1" Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="1" />
+            <Button Grid.Row="3" Grid.Column="1" Text="2" Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="2" />
+            <Button Grid.Row="3" Grid.Column="2" Text="3" Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="3" />
+            <Button Grid.Row="3" Grid.Column="3" Text="+" Style="{StaticResource KeyOp}" Command="{Binding KeyCommand}" CommandParameter="+" />
+
+            <!-- Ligne 5 -->
+            <Button Grid.Row="4" Grid.Column="0" Text="%" Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="%" />
+            <Button Grid.Row="4" Grid.Column="1" Text="0" Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="0" />
+            <Button Grid.Row="4" Grid.Column="2" Text="," Style="{StaticResource KeyDigit}" Command="{Binding KeyCommand}" CommandParameter="," />
+            <Button Grid.Row="4" Grid.Column="3" Text="=" Style="{StaticResource KeyOp}" Command="{Binding KeyCommand}" CommandParameter="=" />
+        </Grid>
+
+        <!-- ================= BARRE DU BAS : actualiser / taux / info ================= -->
+        <Grid Grid.Row="3"
+              ColumnDefinitions="Auto,*,Auto"
+              Padding="22,14,22,0"
+              VerticalOptions="Fill"
+              BackgroundColor="{StaticResource DisplayColor}">
+
+            <Label Grid.Column="0" Text="↻" FontSize="34"
+                   TextColor="{StaticResource TextColor}"
+                   VerticalOptions="Start">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding RefreshCommand}" />
+                </Label.GestureRecognizers>
+            </Label>
+
+            <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Start">
+                <Label Text="{Binding RateText}"
+                       FontSize="18"
+                       TextColor="{StaticResource TextColor}"
+                       HorizontalTextAlignment="Center" />
+                <Label Text="{Binding UpdatedText}"
+                       FontSize="18"
+                       TextColor="{Binding UpdatedColor}"
+                       HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+
+            <Border Grid.Column="2"
+                    WidthRequest="38" HeightRequest="38"
+                    VerticalOptions="Start"
+                    Stroke="{StaticResource TextColor}"
+                    StrokeThickness="3"
+                    BackgroundColor="Transparent">
+                <Border.StrokeShape>
+                    <Ellipse />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding InfoCommand}" />
+                </Border.GestureRecognizers>
+                <Label Text="⋮" FontSize="20" FontAttributes="Bold"
+                       TextColor="{StaticResource TextColor}"
+                       HorizontalOptions="Center" VerticalOptions="Center" />
+            </Border>
+        </Grid>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ConvertisseurDevises.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- ===== Palette ===== -->
+            <Color x:Key="DisplayColor">#2D2D2D</Color>
+            <Color x:Key="SeparatorColor">#3C3C3C</Color>
+            <Color x:Key="KeyFuncColor">#444444</Color>
+            <Color x:Key="KeyDigitColor">#666666</Color>
+            <Color x:Key="KeyOpColor">#FF9F3C</Color>
+            <Color x:Key="TextColor">#FFFFFF</Color>
+            <Color x:Key="MutedColor">#8E8E8E</Color>
+            <Color x:Key="FavoriteCodeColor">#F7D48B</Color>
+            <Color x:Key="BackArrowColor">#F7B35C</Color>
+            <Color x:Key="SearchBgColor">#3B3B3B</Color>
+            <Color x:Key="SuccessColor">#3DDC97</Color>
+            <Color x:Key="ErrorColor">#FF5252</Color>
+            <Color x:Key="ErrorBgColor">#5A2323</Color>
+
+            <!-- ===== Styles des touches de la calculatrice ===== -->
+            <Style x:Key="KeyBase" TargetType="Button">
+                <Setter Property="TextColor" Value="{StaticResource TextColor}" />
+                <Setter Property="FontSize" Value="30" />
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="BorderWidth" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="0" />
+                <Setter Property="MinimumHeightRequest" Value="0" />
+                <Setter Property="MinimumWidthRequest" Value="0" />
+                <Setter Property="HorizontalOptions" Value="Fill" />
+                <Setter Property="VerticalOptions" Value="Fill" />
+            </Style>
+
+            <Style x:Key="KeyFunc" TargetType="Button" BasedOn="{StaticResource KeyBase}">
+                <Setter Property="BackgroundColor" Value="{StaticResource KeyFuncColor}" />
+            </Style>
+
+            <Style x:Key="KeyDigit" TargetType="Button" BasedOn="{StaticResource KeyBase}">
+                <Setter Property="BackgroundColor" Value="{StaticResource KeyDigitColor}" />
+            </Style>
+
+            <Style x:Key="KeyOp" TargetType="Button" BasedOn="{StaticResource KeyBase}">
+                <Setter Property="BackgroundColor" Value="{StaticResource KeyOpColor}" />
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
