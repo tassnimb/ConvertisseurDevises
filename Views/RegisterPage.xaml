@@ -1,0 +1,142 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="ConvertisseurDevises.Views.RegisterPage"
+    NavigationPage.HasNavigationBar="False"
+    BackgroundColor="{StaticResource DisplayColor}">
+
+    <Grid>
+
+        <!-- IMAGE D'ARRIÈRE-PLAN -->
+        <Image
+            Source="login_bg.jpg"
+            Aspect="AspectFill"
+            Opacity="0.35" />
+
+        <!-- FORMULAIRE -->
+        <ScrollView>
+            <Grid MinimumHeightRequest="600">
+
+                <Border
+                    MaximumWidthRequest="500"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Padding="35"
+                   
+Margin="20"
+WidthRequest="500"
+                    BackgroundColor="{StaticResource KeyFuncColor}"
+                    StrokeThickness="0">
+
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="30"/>
+                    </Border.StrokeShape>
+
+                    <VerticalStackLayout Spacing="18">
+
+                        <Label
+                            Text="Créer un compte"
+                            FontSize="30"
+                            FontAttributes="Bold"
+                            HorizontalOptions="Center"
+                            TextColor="{StaticResource TextColor}" />
+
+                        <Label
+                            Text="Rejoignez l'application de conversion"
+                            FontSize="14"
+                            HorizontalOptions="Center"
+                            HorizontalTextAlignment="Center"
+                            TextColor="{StaticResource MutedColor}" />
+
+                        <!-- EMAIL -->
+                        <Border
+                            BackgroundColor="{StaticResource KeyDigitColor}"
+                            StrokeThickness="0">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="12"/>
+                            </Border.StrokeShape>
+                            <Entry
+                                x:Name="emailEntry"
+                                Placeholder="Adresse e-mail"
+                                Keyboard="Email"
+                                TextColor="{StaticResource TextColor}"
+                                PlaceholderColor="{StaticResource MutedColor}"
+                                HeightRequest="55"
+                                ReturnType="Next"/>
+                        </Border>
+
+                        <!-- MOT DE PASSE -->
+                        <Border
+                            BackgroundColor="{StaticResource KeyDigitColor}"
+                            StrokeThickness="0">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="12"/>
+                            </Border.StrokeShape>
+                            <Entry
+                                x:Name="passwordEntry"
+                                Placeholder="Mot de passe (8 caractères minimum)"
+                                TextColor="{StaticResource TextColor}"
+                                PlaceholderColor="{StaticResource MutedColor}"
+                                IsPassword="True"
+                                HeightRequest="55"
+                                ReturnType="Next"/>
+                        </Border>
+
+                        <!-- CONFIRMATION -->
+                        <Border
+                            BackgroundColor="{StaticResource KeyDigitColor}"
+                            StrokeThickness="0">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="12"/>
+                            </Border.StrokeShape>
+                            <Entry
+                                x:Name="confirmPasswordEntry"
+                                Placeholder="Confirmer le mot de passe"
+                                TextColor="{StaticResource TextColor}"
+                                PlaceholderColor="{StaticResource MutedColor}"
+                                IsPassword="True"
+                                HeightRequest="55"
+                                ReturnType="Done"/>
+                        </Border>
+
+                        <!-- INSCRIPTION -->
+                        <Button
+                            Text="S'inscrire"
+                            BackgroundColor="{StaticResource KeyOpColor}"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            FontSize="20"
+                            HeightRequest="60"
+                            CornerRadius="12"
+                            Clicked="Register_Clicked"/>
+
+                        <!-- RETOUR CONNEXION -->
+                        <HorizontalStackLayout
+                            HorizontalOptions="Center"
+                            Spacing="5">
+
+                            <Label
+                                Text="Déjà un compte ?"
+                                TextColor="{StaticResource MutedColor}"
+                                VerticalOptions="Center"/>
+
+                            <Label
+                                Text="Se connecter"
+                                FontAttributes="Bold"
+                                TextColor="{StaticResource KeyOpColor}"
+                                VerticalOptions="Center">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                        Tapped="Login_Tapped"/>
+                                </Label.GestureRecognizers>
+                            </Label>
+
+                        </HorizontalStackLayout>
+
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+        </ScrollView>
+    </Grid>
+</ContentPage>

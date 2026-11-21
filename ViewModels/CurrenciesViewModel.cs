@@ -1,12 +1,10 @@
-﻿using System.Collections.ObjectModel;
+﻿
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using ConvertisseurDevises.Models;
 
 namespace ConvertisseurDevises.ViewModels;
 
-/// <summary>
-/// ViewModel de la page "Currencies" : liste filtrable par la barre de recherche.
-/// </summary>
 public class CurrenciesViewModel : BaseViewModel
 {
     private readonly List<CurrencyInfo> _all;
@@ -14,19 +12,37 @@ public class CurrenciesViewModel : BaseViewModel
     public CurrenciesViewModel(IEnumerable<CurrencyInfo> currencies)
     {
         _all = currencies.ToList();
-        FilteredCurrencies = new ObservableCollection<CurrencyInfo>(_all);
+
+        FilteredCurrencies = new ObservableCollection<CurrencyInfo>();
+        FavoriteCurrencies = new ObservableCollection<CurrencyInfo>();
+        OtherCurrencies = new ObservableCollection<CurrencyInfo>();
+        DisplayItems = new ObservableCollection<object>();
 
         SelectCommand = new Command<CurrencyInfo>(currency =>
         {
             if (currency != null)
                 CurrencySelected?.Invoke(currency);
         });
+
+        FavoriteCommand = new Command<CurrencyInfo>(currency =>
+        {
+            if (currency != null)
+                FavoriteToggleRequested?.Invoke(currency);
+        });
+
+        ApplyFilter();
     }
 
-    /// <summary>Liste affichée (mise à jour à chaque lettre tapée dans "Search").</summary>
     public ObservableCollection<CurrencyInfo> FilteredCurrencies { get; }
+    public ObservableCollection<CurrencyInfo> FavoriteCurrencies { get; }
+    public ObservableCollection<CurrencyInfo> OtherCurrencies { get; }
+    public ObservableCollection<object> DisplayItems { get; }
+
+    public bool HasFavorites => FavoriteCurrencies.Count > 0;
+    public bool HasOtherCurrencies => OtherCurrencies.Count > 0;
 
     private string _searchText = string.Empty;
+
     public string SearchText
     {
         get => _searchText;
@@ -38,22 +54,69 @@ public class CurrenciesViewModel : BaseViewModel
     }
 
     public ICommand SelectCommand { get; }
+    public ICommand FavoriteCommand { get; }
 
-    /// <summary>Déclenché quand l'utilisateur touche une devise.</summary>
     public event Action<CurrencyInfo>? CurrencySelected;
+    public event Action<CurrencyInfo>? FavoriteToggleRequested;
 
     private void ApplyFilter()
     {
         string query = (SearchText ?? string.Empty).Trim();
 
-        IEnumerable<CurrencyInfo> result = string.IsNullOrEmpty(query)
-            ? _all
-            : _all.Where(c =>
+        IEnumerable<CurrencyInfo> result = _all;
+
+        if (!string.IsNullOrEmpty(query))
+        {
+            result = result.Where(c =>
                 c.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 c.Code.Contains(query, StringComparison.OrdinalIgnoreCase));
+        }
 
+        var favorites = result
+            .Where(c => c.IsFavorite)
+            .OrderBy(c => c.Name)
+            .ToList();
+
+        var others = result
+            .Where(c => !c.IsFavorite)
+            .OrderBy(c => c.Name)
+            .ToList();
+
+        FavoriteCurrencies.Clear();
+        OtherCurrencies.Clear();
         FilteredCurrencies.Clear();
-        foreach (CurrencyInfo c in result)
-            FilteredCurrencies.Add(c);
+        DisplayItems.Clear();
+
+        if (favorites.Count > 0)
+        {
+            DisplayItems.Add("⭐ FAVORIS");
+
+            foreach (var currency in favorites)
+            {
+                FavoriteCurrencies.Add(currency);
+                FilteredCurrencies.Add(currency);
+                DisplayItems.Add(currency);
+            }
+        }
+
+        if (others.Count > 0)
+        {
+            DisplayItems.Add("TOUTES LES DEVISES");
+
+            foreach (var currency in others)
+            {
+                OtherCurrencies.Add(currency);
+                FilteredCurrencies.Add(currency);
+                DisplayItems.Add(currency);
+            }
+        }
+
+        OnPropertyChanged(nameof(HasFavorites));
+        OnPropertyChanged(nameof(HasOtherCurrencies));
+    }
+
+    public void RefreshCurrencies()
+    {
+        ApplyFilter();
     }
 }

@@ -1,0 +1,120 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="ConvertisseurDevises.Views.LoginPage"
+    NavigationPage.HasNavigationBar="False"
+    BackgroundColor="{StaticResource DisplayColor}">
+
+    <Grid>
+
+        <!-- IMAGE D'ARRIÈRE-PLAN -->
+        <Image
+            Source="login_bg.jpg"
+            Aspect="AspectFill"
+            Opacity="0.35" />
+
+        <!-- FORMULAIRE DE CONNEXION -->
+        <Border
+            MaximumWidthRequest="500"
+            HorizontalOptions="Center"
+            VerticalOptions="Center"
+            Padding="35"
+            Margin="20"
+            BackgroundColor="{StaticResource KeyFuncColor}"
+            StrokeThickness="0">
+
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="30" />
+            </Border.StrokeShape>
+
+            <VerticalStackLayout Spacing="20">
+
+                <Label
+                    Text="Convertisseur de Devises"
+                    FontSize="32"
+                    FontAttributes="Bold"
+                    HorizontalOptions="Center"
+                    TextColor="{StaticResource TextColor}" />
+
+                <Label
+                    Text="Connectez-vous pour continuer"
+                    FontSize="15"
+                    HorizontalOptions="Center"
+                    TextColor="{StaticResource MutedColor}" />
+
+                <!-- EMAIL -->
+                <Border
+                    BackgroundColor="{StaticResource KeyDigitColor}"
+                    StrokeThickness="0">
+
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12" />
+                    </Border.StrokeShape>
+
+                    <Entry
+                        x:Name="emailEntry"
+                        Placeholder="Adresse e-mail"
+                        Keyboard="Email"
+                        TextColor="{StaticResource TextColor}"
+                        PlaceholderColor="{StaticResource MutedColor}"
+                        HeightRequest="55" />
+                </Border>
+
+                <!-- MOT DE PASSE -->
+                <Border
+                    BackgroundColor="{StaticResource KeyDigitColor}"
+                    StrokeThickness="0">
+
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12" />
+                    </Border.StrokeShape>
+
+                    <Entry
+                        x:Name="passwordEntry"
+                        Placeholder="Mot de passe"
+                        PlaceholderColor="{StaticResource MutedColor}"
+                        TextColor="{StaticResource TextColor}"
+                        IsPassword="True"
+                        HeightRequest="55" />
+                </Border>
+
+                <!-- BOUTON CONNEXION -->
+                <Button
+                    Text="Se connecter"
+                    BackgroundColor="{StaticResource KeyOpColor}"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    FontSize="20"
+                    HeightRequest="60"
+                    CornerRadius="12"
+                    Clicked="Login_Clicked" />
+
+                <!-- LIEN INSCRIPTION -->
+                <HorizontalStackLayout
+                    HorizontalOptions="Center"
+                    Spacing="5">
+
+                    <Label
+                        Text="Pas encore de compte ?"
+                        TextColor="{StaticResource MutedColor}" />
+
+                    <Label
+                        Text="Créer un compte"
+                        FontAttributes="Bold"
+                        TextColor="{StaticResource KeyOpColor}">
+
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer
+                                Tapped="Register_LabelTapped" />
+                        </Label.GestureRecognizers>
+
+                    </Label>
+
+                </HorizontalStackLayout>
+
+            </VerticalStackLayout>
+        </Border>
+
+    </Grid>
+</ContentPage>

@@ -9,10 +9,8 @@ public partial class App : Application
 
     public App(IServiceProvider services)
     {
-        // 1) Charge d'abord les ressources de App.xaml (couleurs, styles)
         InitializeComponent();
 
-        // 2) Mode sombre uniquement
         UserAppTheme = AppTheme.Dark;
 
         _services = services;
@@ -20,9 +18,9 @@ public partial class App : Application
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        // La page est créée ICI (après le chargement des ressources).
-        // NavigationPage permet d'ouvrir la liste "Currencies" puis de revenir en arrière.
-        var mainPage = _services.GetRequiredService<MainPage>();
-        return new Window(new NavigationPage(mainPage));
+        var loginPage = _services.GetRequiredService<LoginPage>();
+
+        return new Window(
+            new NavigationPage(loginPage));
     }
 }

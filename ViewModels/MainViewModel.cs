@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -10,96 +11,171 @@ using Microsoft.Maui.Graphics;
 namespace ConvertisseurDevises.ViewModels;
 
 /// <summary>
-/// ViewModel de la page principale (calculatrice de conversion).
-/// Deux lignes : la ligne "active" reçoit la saisie, l'autre affiche le montant converti.
+/// ViewModel de la page principale.
+/// Gère la calculatrice, les conversions et l'historique SQLite.
 /// </summary>
 public class MainViewModel : BaseViewModel
 {
     private const int MaxLength = 20;
-    private static readonly Color SuccessColor = Color.FromArgb("#3DDC97");
-    private static readonly Color ErrorColor = Color.FromArgb("#FF5252");
+
+    private static readonly Color SuccessColor =
+        Color.FromArgb("#3DDC97");
+
+    private static readonly Color ErrorColor =
+        Color.FromArgb("#FF5252");
 
     private readonly CurrencyService _currencyService;
+    private readonly DatabaseService _databaseService;
 
-    // Taux (base USD) : code -> taux
+    // Utilisateur actuellement connecté
+    private int? _currentUserId;
+
+    // Taux de change : code devise -> taux
     private Dictionary<string, double> _rates = new();
+
     private DateTime? _lastUpdateUtc;
     private bool _isLoading;
     private bool _loadFailed;
 
-    // État de la calculatrice
-    private string _expression = "0";   // ex. "12,5+3"
-    private bool _hasInput;             // l'utilisateur a-t-il tapé quelque chose ?
-    private bool _justEvaluated;        // vient-on d'appuyer sur "=" ?
-    private int _activeIndex;           // 0 = ligne du haut, 1 = ligne du bas
+    // Calculatrice
+    private string _expression = "0";
+    private bool _hasInput;
+    private bool _justEvaluated;
+    private int _activeIndex;
     private int _errorVersion;
 
-    public MainViewModel(CurrencyService currencyService)
+    public MainViewModel(
+        CurrencyService currencyService,
+        DatabaseService databaseService)
     {
         _currencyService = currencyService;
+        _databaseService = databaseService;
 
-        Currencies = new ObservableCollection<CurrencyInfo>(CurrencyInfo.GetSupported());
+        Currencies = new ObservableCollection<CurrencyInfo>(
+            CurrencyInfo.GetSupported());
+
         _topCurrency = Currencies.First(c => c.Code == "TND");
         _bottomCurrency = Currencies.First(c => c.Code == "EUR");
 
-        KeyCommand = new Command<string>(OnKey);
-        SelectRowCommand = new Command<string>(p => SetActiveRow(int.Parse(p ?? "0")));
-        PickCurrencyCommand = new Command<string>(p => PickCurrencyRequested?.Invoke(int.Parse(p ?? "0")));
-        RefreshCommand = new Command(async () => await LoadRatesAsync(forceRefresh: true));
-        InfoCommand = new Command(() => InfoRequested?.Invoke(BuildInfoText()));
+        KeyCommand = new Command<string>(
+            async key => await OnKeyAsync(key));
+
+        SelectRowCommand = new Command<string>(
+            p => SetActiveRow(int.Parse(p ?? "0")));
+
+        PickCurrencyCommand = new Command<string>(
+            p => PickCurrencyRequested?.Invoke(
+                int.Parse(p ?? "0")));
+
+        RefreshCommand = new Command(
+            async () => await LoadRatesAsync(
+                forceRefresh: true));
+
+        InfoCommand = new Command(
+            () => InfoRequested?.Invoke(BuildInfoText()));
+    }
+
+    // ====================== Utilisateur connecté ======================
+
+    /// <summary>
+    /// Identifiant de l'utilisateur actuellement connecté.
+    /// Utilisé par la page Historique.
+    /// </summary>
+    public int? CurrentUserId => _currentUserId;
+
+    /// <summary>
+    /// Définit l'utilisateur après une connexion réussie.
+    /// </summary>
+    public void SetCurrentUser(int userId)
+    {
+        _currentUserId = userId;
+    }
+
+    /// <summary>
+    /// Efface l'utilisateur lors de la déconnexion.
+    /// </summary>
+    public void ClearCurrentUser()
+    {
+        _currentUserId = null;
     }
 
     // ====================== Collections / événements ======================
+
     public ObservableCollection<CurrencyInfo> Currencies { get; }
 
-    /// <summary>Demande à la vue d'ouvrir la liste des devises pour la ligne 0 ou 1.</summary>
     public event Action<int>? PickCurrencyRequested;
 
-    /// <summary>Demande à la vue d'afficher une fenêtre d'information.</summary>
     public event Action<string>? InfoRequested;
 
     // ====================== Commandes ======================
+
     public ICommand KeyCommand { get; }
     public ICommand SelectRowCommand { get; }
     public ICommand PickCurrencyCommand { get; }
     public ICommand RefreshCommand { get; }
     public ICommand InfoCommand { get; }
 
-    // ====================== Propriétés liées à l'écran ======================
+    // ====================== Devises affichées ======================
+
     private CurrencyInfo _topCurrency;
+
     public CurrencyInfo TopCurrency
     {
         get => _topCurrency;
-        set { if (SetProperty(ref _topCurrency, value)) RefreshDisplay(); }
+        set
+        {
+            if (SetProperty(ref _topCurrency, value))
+                RefreshDisplay();
+        }
     }
 
     private CurrencyInfo _bottomCurrency;
+
     public CurrencyInfo BottomCurrency
     {
         get => _bottomCurrency;
-        set { if (SetProperty(ref _bottomCurrency, value)) RefreshDisplay(); }
+        set
+        {
+            if (SetProperty(ref _bottomCurrency, value))
+                RefreshDisplay();
+        }
     }
 
-    public string TopText => _activeIndex == 0 ? PrettyExpression : ConvertedText;
-    public string BottomText => _activeIndex == 1 ? PrettyExpression : ConvertedText;
+    public string TopText =>
+        _activeIndex == 0 ? PrettyExpression : ConvertedText;
+
+    public string BottomText =>
+        _activeIndex == 1 ? PrettyExpression : ConvertedText;
+
     public double TopFontSize => FontSizeFor(TopText);
+
     public double BottomFontSize => FontSizeFor(BottomText);
 
-    /// <summary>Ex. "1 TND = 0,2915 EUR"</summary>
+    // ====================== Taux affiché ======================
+
     public string RateText
     {
         get
         {
-            double? r = TopCurrency.Code == BottomCurrency.Code ? 1 : GetRate(TopCurrency, BottomCurrency);
-            if (!r.HasValue) return $"1 {TopCurrency.Code} = … {BottomCurrency.Code}";
+            double? rate = TopCurrency.Code == BottomCurrency.Code
+                ? 1
+                : GetRate(TopCurrency, BottomCurrency);
 
-            string format = r.Value < 0.01 ? "0.######" : "0.####";
-            string rate = r.Value.ToString(format, CultureInfo.InvariantCulture).Replace('.', ',');
-            return $"1 {TopCurrency.Code} = {rate} {BottomCurrency.Code}";
+            if (!rate.HasValue)
+                return $"1 {TopCurrency.Code} = … {BottomCurrency.Code}";
+
+            string format = rate.Value < 0.01
+                ? "0.######"
+                : "0.####";
+
+            string rateText = rate.Value
+                .ToString(format, CultureInfo.InvariantCulture)
+                .Replace('.', ',');
+
+            return $"1 {TopCurrency.Code} = {rateText} {BottomCurrency.Code}";
         }
     }
 
-    /// <summary>"Just now", "5 min ago", "Updating…" ou "Offline".</summary>
     public string UpdatedText
     {
         get
@@ -109,15 +185,24 @@ public class MainViewModel : BaseViewModel
             if (_lastUpdateUtc is null) return string.Empty;
 
             TimeSpan span = DateTime.UtcNow - _lastUpdateUtc.Value;
-            if (span.TotalMinutes < 1) return "Just now";
-            if (span.TotalHours < 1) return $"{(int)span.TotalMinutes} min ago";
+
+            if (span.TotalMinutes < 1)
+                return "Just now";
+
+            if (span.TotalHours < 1)
+                return $"{(int)span.TotalMinutes} min ago";
+
             return $"{(int)span.TotalHours} h ago";
         }
     }
 
-    public Color UpdatedColor => _loadFailed ? ErrorColor : SuccessColor;
+    public Color UpdatedColor =>
+        _loadFailed ? ErrorColor : SuccessColor;
+
+    // ====================== Erreurs ======================
 
     private string _errorMessage = string.Empty;
+
     public string ErrorMessage
     {
         get => _errorMessage;
@@ -127,18 +212,23 @@ public class MainViewModel : BaseViewModel
                 OnPropertyChanged(nameof(HasError));
         }
     }
+
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
-    // ====================== Chargement des taux (HTTP + JSON) ======================
+    // ====================== Chargement des taux ======================
+
     public async Task InitializeAsync()
     {
+        await LoadFavoritesAsync();
+
         if (_rates.Count == 0)
             await LoadRatesAsync(forceRefresh: false);
     }
 
     private async Task LoadRatesAsync(bool forceRefresh)
     {
-        if (_isLoading) return;
+        if (_isLoading)
+            return;
 
         _isLoading = true;
         RefreshDisplay();
@@ -146,7 +236,11 @@ public class MainViewModel : BaseViewModel
         try
         {
             await _currencyService.GetLatestRatesAsync(forceRefresh);
-            _rates = _currencyService.GetRatesList().ToDictionary(r => r.Code, r => r.Rate);
+
+            _rates = _currencyService
+                .GetRatesList()
+                .ToDictionary(r => r.Code, r => r.Rate);
+
             _lastUpdateUtc = DateTime.UtcNow;
             _loadFailed = false;
         }
@@ -162,61 +256,91 @@ public class MainViewModel : BaseViewModel
         }
     }
 
-    // ====================== Devises ======================
+    // ====================== Sélection des devises ======================
 
-    /// <summary>Appelé par la vue quand l'utilisateur choisit une devise dans la liste.</summary>
     public void SetCurrency(int row, CurrencyInfo currency)
     {
         if (row == 0)
         {
-            if (currency.Code == BottomCurrency.Code) BottomCurrency = TopCurrency; // échange
+            if (currency.Code == BottomCurrency.Code)
+                BottomCurrency = TopCurrency;
+
             TopCurrency = currency;
         }
         else
         {
-            if (currency.Code == TopCurrency.Code) TopCurrency = BottomCurrency;    // échange
+            if (currency.Code == TopCurrency.Code)
+                TopCurrency = BottomCurrency;
+
             BottomCurrency = currency;
         }
+
         RefreshDisplay();
     }
 
-    private CurrencyInfo ActiveCurrency => _activeIndex == 0 ? TopCurrency : BottomCurrency;
-    private CurrencyInfo OtherCurrency => _activeIndex == 0 ? BottomCurrency : TopCurrency;
+    private CurrencyInfo ActiveCurrency =>
+        _activeIndex == 0 ? TopCurrency : BottomCurrency;
 
-    private double? GetRate(CurrencyInfo from, CurrencyInfo to)
+    private CurrencyInfo OtherCurrency =>
+        _activeIndex == 0 ? BottomCurrency : TopCurrency;
+
+    private double? GetRate(
+        CurrencyInfo from,
+        CurrencyInfo to)
     {
         if (_rates.TryGetValue(from.Code, out double rateFrom) &&
             _rates.TryGetValue(to.Code, out double rateTo) &&
             rateFrom != 0)
+        {
             return rateTo / rateFrom;
+        }
 
         return null;
     }
 
-    private double Convert(double value, CurrencyInfo from, CurrencyInfo to)
+    private double Convert(
+        double value,
+        CurrencyInfo from,
+        CurrencyInfo to)
     {
-        if (from.Code == to.Code) return value;
+        if (from.Code == to.Code)
+            return value;
+
         double? rate = GetRate(from, to);
-        return rate.HasValue ? value * rate.Value : 0;
+
+        return rate.HasValue
+            ? value * rate.Value
+            : 0;
     }
 
-    /// <summary>Texte de la ligne non active : montant converti en direct.</summary>
     private string ConvertedText
     {
         get
         {
-            if (!ExpressionEvaluator.TryEvaluate(_expression, out double value)) value = 0;
-            return FormatDisplay(Convert(value, ActiveCurrency, OtherCurrency));
+            if (!ExpressionEvaluator.TryEvaluate(
+                _expression, out double value))
+            {
+                value = 0;
+            }
+
+            return FormatDisplay(
+                Convert(value, ActiveCurrency, OtherCurrency));
         }
     }
 
-    /// <summary>Touche une ligne : elle devient la ligne de saisie.</summary>
     private void SetActiveRow(int index)
     {
-        if (index == _activeIndex) return;
+        if (index == _activeIndex)
+            return;
 
-        if (!ExpressionEvaluator.TryEvaluate(_expression, out double value)) value = 0;
-        double converted = Convert(value, ActiveCurrency, OtherCurrency);
+        if (!ExpressionEvaluator.TryEvaluate(
+            _expression, out double value))
+        {
+            value = 0;
+        }
+
+        double converted = Convert(
+            value, ActiveCurrency, OtherCurrency);
 
         _activeIndex = index;
         _expression = FormatRaw(converted);
@@ -227,20 +351,56 @@ public class MainViewModel : BaseViewModel
     }
 
     // ====================== Calculatrice ======================
-    private void OnKey(string key)
+
+    private async Task OnKeyAsync(string key)
     {
-        if (string.IsNullOrEmpty(key)) return;
+        if (string.IsNullOrEmpty(key))
+            return;
 
         ErrorMessage = string.Empty;
 
-        if (key == "C") ResetExpression();
-        else if (key == "←") Backspace();
-        else if (key == "⇅") (TopCurrency, BottomCurrency) = (BottomCurrency, TopCurrency);
-        else if (key == "%") Percent();
-        else if (key == "=") EvaluateAndValidate();
-        else if (key == ",") AppendComma();
-        else if (key.Length == 1 && ExpressionEvaluator.IsOperator(key[0])) AppendOperator(key[0]);
-        else if (key.Length == 1 && char.IsDigit(key[0])) AppendDigit(key[0]);
+        if (key == "C")
+        {
+            ResetExpression();
+        }
+        else if (key == "←")
+        {
+            Backspace();
+        }
+        else if (key == "⇅")
+        {
+            (TopCurrency, BottomCurrency) =
+                (BottomCurrency, TopCurrency);
+        }
+        else if (key == "%")
+        {
+            Percent();
+        }
+        else if (key == "=")
+        {
+            if (!_justEvaluated)
+            {
+                bool valid = EvaluateAndValidate(
+                    out double amount);
+
+                if (valid)
+                    await SaveConversionAsync(amount);
+            }
+        }
+        else if (key == ",")
+        {
+            AppendComma();
+        }
+        else if (key.Length == 1 &&
+                 ExpressionEvaluator.IsOperator(key[0]))
+        {
+            AppendOperator(key[0]);
+        }
+        else if (key.Length == 1 &&
+                 char.IsDigit(key[0]))
+        {
+            AppendDigit(key[0]);
+        }
 
         RefreshDisplay();
     }
@@ -254,34 +414,62 @@ public class MainViewModel : BaseViewModel
 
     private void Backspace()
     {
-        if (_justEvaluated) { ResetExpression(); return; }
+        if (_justEvaluated)
+        {
+            ResetExpression();
+            return;
+        }
 
-        _expression = _expression.Length <= 1 ? "0" : _expression[..^1];
-        if (_expression == "−") _expression = "0";
-        if (_expression == "0") _hasInput = false;
+        _expression = _expression.Length <= 1
+            ? "0"
+            : _expression[..^1];
+
+        if (_expression == "−")
+            _expression = "0";
+
+        if (_expression == "0")
+            _hasInput = false;
     }
 
     private void AppendDigit(char digit)
     {
-        if (_justEvaluated) { _expression = "0"; _justEvaluated = false; }
-        if (_expression.Length >= MaxLength) return;
+        if (_justEvaluated)
+        {
+            _expression = "0";
+            _justEvaluated = false;
+        }
 
-        // Évite les zéros inutiles au début d'un nombre ("05" -> "5")
-        if (TrailingNumber() == "0") _expression = _expression[..^1] + digit;
-        else _expression += digit;
+        if (_expression.Length >= MaxLength)
+            return;
+
+        if (TrailingNumber() == "0")
+            _expression = _expression[..^1] + digit;
+        else
+            _expression += digit;
 
         _hasInput = true;
     }
 
     private void AppendComma()
     {
-        if (_justEvaluated) { _expression = "0"; _justEvaluated = false; }
-        if (_expression.Length >= MaxLength) return;
+        if (_justEvaluated)
+        {
+            _expression = "0";
+            _justEvaluated = false;
+        }
+
+        if (_expression.Length >= MaxLength)
+            return;
 
         string trailing = TrailingNumber();
-        if (trailing.Contains(',')) return;          // déjà une virgule dans ce nombre
 
-        _expression += trailing.Length == 0 ? "0," : ",";
+        if (trailing.Contains(','))
+            return;
+
+        _expression += trailing.Length == 0
+            ? "0,"
+            : ",";
+
         _hasInput = true;
     }
 
@@ -290,62 +478,135 @@ public class MainViewModel : BaseViewModel
         _justEvaluated = false;
 
         char last = _expression[^1];
+
         if (ExpressionEvaluator.IsOperator(last))
-            _expression = _expression[..^1] + op;    // remplace l'opérateur précédent
+        {
+            _expression = _expression[..^1] + op;
+        }
         else if (_expression.Length < MaxLength)
+        {
             _expression += op;
+        }
     }
 
     private void Percent()
     {
         string trailing = TrailingNumber();
-        if (trailing.Length == 0) return;
 
-        if (!double.TryParse(trailing.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out double v))
+        if (trailing.Length == 0)
             return;
 
-        _expression = _expression[..^trailing.Length] + FormatRaw(v / 100);
+        if (!double.TryParse(
+            trailing.Replace(',', '.'),
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out double value))
+        {
+            return;
+        }
+
+        _expression =
+            _expression[..^trailing.Length] +
+            FormatRaw(value / 100);
+
         _justEvaluated = false;
     }
 
-    /// <summary>Touche "=" : calcule l'expression et VALIDE la saisie.</summary>
-    private void EvaluateAndValidate()
+    private bool EvaluateAndValidate(out double amount)
     {
-        // 1) Non vide
+        amount = 0;
+
         if (!_hasInput && _expression == "0")
         {
-            _ = ShowErrorAsync("Veuillez saisir un montant.");
-            return;
+            _ = ShowErrorAsync(
+                "Veuillez saisir un montant.");
+
+            return false;
         }
 
-        // 2) Expression calculable
-        if (!ExpressionEvaluator.TryEvaluate(_expression, out double value))
+        if (!ExpressionEvaluator.TryEvaluate(
+            _expression, out double value))
         {
-            _ = ShowErrorAsync("Expression invalide (format incorrect ou division par zéro).");
-            return;
+            _ = ShowErrorAsync(
+                "Expression invalide (format incorrect ou division par zéro).");
+
+            return false;
         }
 
-        // 3) Numérique et supérieur à zéro
-        if (!InputValidator.TryParseAmount(value.ToString("R", CultureInfo.InvariantCulture),
-                                           allowZeroOrNegative: false, out _, out string error))
+        if (!InputValidator.TryParseAmount(
+            value.ToString("R", CultureInfo.InvariantCulture),
+            allowZeroOrNegative: false,
+            out _, out string error))
         {
             _ = ShowErrorAsync(error);
-            return;
+            return false;
         }
+
+        amount = value;
 
         _expression = FormatRaw(value);
         _justEvaluated = true;
         _hasInput = true;
+
+        return true;
     }
 
-    /// <summary>Dernier nombre de l'expression (après le dernier opérateur).</summary>
+    // ====================== Historique SQLite ======================
+
+    private async Task SaveConversionAsync(double amount)
+    {
+        if (!_currentUserId.HasValue)
+            return;
+
+        CurrencyInfo from = ActiveCurrency;
+        CurrencyInfo to = OtherCurrency;
+
+        double convertedAmount = Convert(
+            amount, from, to);
+
+        if (amount <= 0 || convertedAmount <= 0)
+        {
+            if (from.Code != to.Code)
+            {
+                _ = ShowErrorAsync(
+                    "Conversion impossible : taux de change indisponible.");
+            }
+
+            return;
+        }
+
+        try
+        {
+            var history = new ConversionHistory
+            {
+                UserId = _currentUserId.Value,
+                FromCurrency = from.Code,
+                ToCurrency = to.Code,
+                Amount = amount,
+                ConvertedAmount = convertedAmount,
+                ConversionDate = DateTime.Now
+            };
+
+            await _databaseService.AddConversionAsync(history);
+        }
+        catch (Exception ex)
+        {
+            _ = ShowErrorAsync(
+                "Impossible d'enregistrer l'historique : " +
+                ex.Message);
+        }
+    }
+
     private string TrailingNumber()
     {
-        int index = _expression.LastIndexOfAny(ExpressionEvaluator.Operators);
+        int index = _expression.LastIndexOfAny(
+            ExpressionEvaluator.Operators);
+
         return _expression[(index + 1)..];
     }
 
     // ====================== Affichage ======================
+
     private void RefreshDisplay()
     {
         OnPropertyChanged(nameof(TopText));
@@ -357,7 +618,6 @@ public class MainViewModel : BaseViewModel
         OnPropertyChanged(nameof(UpdatedColor));
     }
 
-    /// <summary>Expression lisible : "1 000 + 25,5".</summary>
     private string PrettyExpression
     {
         get
@@ -369,9 +629,14 @@ public class MainViewModel : BaseViewModel
             {
                 if (ExpressionEvaluator.IsOperator(c))
                 {
-                    result.Append(GroupNumber(token.ToString()));
+                    result.Append(
+                        GroupNumber(token.ToString()));
+
                     token.Clear();
-                    result.Append(' ').Append(c).Append(' ');
+
+                    result.Append(' ')
+                          .Append(c)
+                          .Append(' ');
                 }
                 else
                 {
@@ -379,46 +644,66 @@ public class MainViewModel : BaseViewModel
                 }
             }
 
-            result.Append(GroupNumber(token.ToString()));
+            result.Append(
+                GroupNumber(token.ToString()));
+
             return result.ToString().Trim();
         }
     }
 
-    /// <summary>Sépare les milliers : "1234567,5" -> "1 234 567,5".</summary>
     private static string GroupNumber(string token)
     {
-        if (token.Length == 0) return string.Empty;
+        if (token.Length == 0)
+            return string.Empty;
 
         int comma = token.IndexOf(',');
-        string integerPart = comma >= 0 ? token[..comma] : token;
-        string rest = comma >= 0 ? token[comma..] : string.Empty;
+
+        string integerPart = comma >= 0
+            ? token[..comma]
+            : token;
+
+        string rest = comma >= 0
+            ? token[comma..]
+            : string.Empty;
 
         var sb = new StringBuilder();
+
         for (int i = 0; i < integerPart.Length; i++)
         {
-            if (i > 0 && (integerPart.Length - i) % 3 == 0) sb.Append('\u00A0');
+            if (i > 0 &&
+                (integerPart.Length - i) % 3 == 0)
+            {
+                sb.Append('\u00A0');
+            }
+
             sb.Append(integerPart[i]);
         }
+
         sb.Append(rest);
+
         return sb.ToString();
     }
 
-    /// <summary>Format utilisé pour la valeur convertie : "1 234,56".</summary>
     private static string FormatDisplay(double value)
     {
-        if (Math.Abs(value) < 0.00005) value = 0;
+        if (Math.Abs(value) < 0.00005)
+            value = 0;
 
-        string format = Math.Abs(value) >= 1 || value == 0 ? "#,0.##" : "#,0.####";
+        string format =
+            Math.Abs(value) >= 1 || value == 0
+                ? "#,0.##"
+                : "#,0.####";
+
         return Math.Round(value, 4)
             .ToString(format, CultureInfo.InvariantCulture)
             .Replace(',', '\u00A0')
             .Replace('.', ',');
     }
 
-    /// <summary>Format "brut" stocké dans l'expression : "1234,56" (sans séparateur de milliers).</summary>
     private static string FormatRaw(double value)
     {
-        if (Math.Abs(value) < 0.00005) return "0";
+        if (Math.Abs(value) < 0.00005)
+            return "0";
 
         return Math.Round(value, 4)
             .ToString("0.####", CultureInfo.InvariantCulture)
@@ -426,20 +711,21 @@ public class MainViewModel : BaseViewModel
             .Replace('-', '−');
     }
 
-    /// <summary>Réduit la taille de police quand le nombre est long.</summary>
-    private static double FontSizeFor(string text) => text.Length switch
-    {
-        <= 7 => 44,
-        <= 10 => 36,
-        <= 13 => 28,
-        _ => 22
-    };
+    private static double FontSizeFor(string text) =>
+        text.Length switch
+        {
+            <= 7 => 44,
+            <= 10 => 36,
+            <= 13 => 28,
+            _ => 22
+        };
 
     // ====================== Messages ======================
-    /// <summary>Affiche un message d'erreur élégant pendant 3,5 secondes.</summary>
+
     private async Task ShowErrorAsync(string message)
     {
         ErrorMessage = message;
+
         int version = ++_errorVersion;
 
         await Task.Delay(3500);
@@ -458,9 +744,80 @@ public class MainViewModel : BaseViewModel
 
     private static string GetFriendlyError(Exception ex) => ex switch
     {
-        HttpRequestException => "Connexion impossible. Vérifiez votre accès Internet puis réessayez.",
-        TaskCanceledException => "Le serveur met trop de temps à répondre. Réessayez dans un instant.",
-        JsonException => "La réponse du serveur est illisible (JSON invalide).",
-        _ => $"Une erreur est survenue : {ex.Message}"
+        HttpRequestException =>
+            "Connexion impossible. Vérifiez votre accès Internet puis réessayez.",
+
+        TaskCanceledException =>
+            "Le serveur met trop de temps à répondre. Réessayez dans un instant.",
+
+        JsonException =>
+            "La réponse du serveur est illisible (JSON invalide).",
+
+        _ =>
+            $"Une erreur est survenue : {ex.Message}"
     };
+
+    // ====================== GESTION DES FAVORIS ======================
+
+    public async Task LoadFavoritesAsync()
+    {
+        if (!_currentUserId.HasValue)
+            return;
+
+        var favorites = await _databaseService.GetFavoritesAsync(
+            _currentUserId.Value);
+
+        var favoriteCodes = favorites
+            .Select(f => f.CurrencyCode)
+            .ToHashSet();
+
+        foreach (var currency in Currencies)
+        {
+            currency.IsFavorite = favoriteCodes.Contains(currency.Code);
+        }
+
+        OnPropertyChanged(nameof(Currencies));
+    }
+
+    public async Task ToggleFavoriteAsync(CurrencyInfo currency)
+    {
+        if (!_currentUserId.HasValue)
+        {
+            InfoRequested?.Invoke(
+                "Connectez-vous pour enregistrer vos favoris.");
+            return;
+        }
+
+        if (currency.IsFavorite)
+        {
+            var favorites = await _databaseService.GetFavoritesAsync(
+                _currentUserId.Value);
+
+            var favorite = favorites.FirstOrDefault(
+                f => f.CurrencyCode == currency.Code);
+
+            if (favorite != null)
+            {
+                await _databaseService.DeleteFavoriteAsync(
+                    favorite.Id,
+                    _currentUserId.Value);
+            }
+
+            currency.IsFavorite = false;
+        }
+        else
+        {
+            await _databaseService.AddFavoriteAsync(
+                new FavoriteCurrency
+                {
+                    UserId = _currentUserId.Value,
+                    CurrencyCode = currency.Code
+                });
+
+            currency.IsFavorite = true;
+        }
+
+        OnPropertyChanged(nameof(Currencies));
+    }
+
 }

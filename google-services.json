@@ -1,0 +1,29 @@
+﻿{
+  "project_info": {
+    "project_number": "742125365744",
+    "project_id": "convertisseurdevises",
+    "storage_bucket": "convertisseurdevises.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:742125365744:android:35e0487fdb7e2956341535",
+        "android_client_info": {
+          "package_name": "com.companyname.convertisseurdevises"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACKsCvfSc3clJsVET_tUTvISwvxEB3ySU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

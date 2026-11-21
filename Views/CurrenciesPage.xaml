@@ -10,12 +10,16 @@
 
     <Grid RowDefinitions="Auto,Auto,*">
 
-        <!-- ================= EN-TÊTE : flèche retour + titre ================= -->
-        <Grid Grid.Row="0" ColumnDefinitions="64,*,64" Padding="8,14">
-            <Grid Grid.Column="0" BackgroundColor="Transparent">
+        <!-- EN-TÊTE -->
+        <Grid Grid.Row="0"
+              ColumnDefinitions="64,*,64"
+              Padding="8,14">
+
+            <Grid Grid.Column="0">
                 <Grid.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnBackTapped" />
                 </Grid.GestureRecognizers>
+
                 <Label Text="❮"
                        FontSize="26"
                        TextColor="{StaticResource BackArrowColor}"
@@ -32,15 +36,17 @@
                    VerticalOptions="Center" />
         </Grid>
 
-        <!-- ================= BARRE DE RECHERCHE ================= -->
+        <!-- RECHERCHE -->
         <Border Grid.Row="1"
                 Margin="20,8,20,12"
                 Padding="18,0"
                 BackgroundColor="{StaticResource SearchBgColor}"
                 StrokeThickness="0">
+
             <Border.StrokeShape>
                 <RoundRectangle CornerRadius="26" />
             </Border.StrokeShape>
+
             <Entry Placeholder="Search"
                    Text="{Binding SearchText}"
                    PlaceholderColor="{StaticResource MutedColor}"
@@ -50,59 +56,133 @@
                    HeightRequest="52" />
         </Border>
 
-        <!-- ================= LISTE DES DEVISES ================= -->
-        <CollectionView Grid.Row="2"
-                        ItemsSource="{Binding FilteredCurrencies}"
-                        SelectionMode="None">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Grid ColumnDefinitions="Auto,*,Auto"
-                          ColumnSpacing="18"
+        <!-- LISTE DES DEVISES -->
+        <ScrollView Grid.Row="2">
+            <VerticalStackLayout Spacing="0">
+
+                <!-- SECTION FAVORIS -->
+                <Label Text="⭐ FAVORIS"
+               IsVisible="{Binding HasFavorites}"
+               FontSize="14"
+               FontAttributes="Bold"
+               TextColor="#F5B82E"
+               Margin="20,18,20,8" />
+
+                <CollectionView ItemsSource="{Binding FavoriteCurrencies}"
+                        SelectionMode="None"
+                        HeightRequest="Auto">
+
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto"
+                          ColumnSpacing="14"
                           Padding="20,0"
-                          HeightRequest="76"
-                          BackgroundColor="Transparent">
-                        <Grid.GestureRecognizers>
-                            <TapGestureRecognizer
+                          HeightRequest="76">
+
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer
                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CurrenciesViewModel}}, Path=SelectCommand}"
                                 CommandParameter="{Binding .}" />
-                        </Grid.GestureRecognizers>
+                                </Grid.GestureRecognizers>
 
-                        <!-- Drapeau rond -->
-                        <Border Grid.Column="0"
-                                WidthRequest="46" HeightRequest="46"
+                                <Border WidthRequest="46"
+                                HeightRequest="46"
                                 VerticalOptions="Center"
-                                StrokeThickness="0"
-                                BackgroundColor="{StaticResource KeyFuncColor}">
-                            <Border.StrokeShape>
-                                <Ellipse />
-                            </Border.StrokeShape>
-                            <Image Source="{Binding FlagUrl}" Aspect="AspectFill" />
-                        </Border>
+                                StrokeThickness="0">
+                                    <Border.StrokeShape>
+                                        <Ellipse />
+                                    </Border.StrokeShape>
+                                    <Image Source="{Binding FlagUrl}" />
+                                </Border>
 
-                        <!-- Nom -->
-                        <Label Grid.Column="1"
+                                <Label Grid.Column="1"
                                Text="{Binding Name}"
-                               FontSize="22"
-                               TextColor="{StaticResource TextColor}"
                                VerticalOptions="Center"
-                               LineBreakMode="TailTruncation" />
+                               TextColor="{StaticResource TextColor}" />
 
-                        <!-- Code : gris, jaune si favori -->
-                        <Label Grid.Column="2"
+                                <Label Grid.Column="2"
                                Text="{Binding Code}"
-                               FontSize="20"
-                               FontAttributes="Bold"
-                               TextColor="{StaticResource MutedColor}"
+                               VerticalOptions="Center"
+                               TextColor="{StaticResource FavoriteCodeColor}" />
+
+                                <Label Grid.Column="3"
+                               Text="★"
+                               FontSize="27"
+                               TextColor="#F5B82E"
                                VerticalOptions="Center">
-                            <Label.Triggers>
-                                <DataTrigger TargetType="Label" Binding="{Binding IsFavorite}" Value="True">
-                                    <Setter Property="TextColor" Value="{StaticResource FavoriteCodeColor}" />
-                                </DataTrigger>
-                            </Label.Triggers>
-                        </Label>
-                    </Grid>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CurrenciesViewModel}}, Path=FavoriteCommand}"
+                                    CommandParameter="{Binding .}" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- SECTION AUTRES DEVISES -->
+                <Label Text="TOUTES LES DEVISES"
+               IsVisible="{Binding HasOtherCurrencies}"
+               FontSize="14"
+               FontAttributes="Bold"
+               TextColor="{StaticResource MutedColor}"
+               Margin="20,18,20,8" />
+
+                <CollectionView ItemsSource="{Binding OtherCurrencies}"
+                        SelectionMode="None">
+
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto"
+                          ColumnSpacing="14"
+                          Padding="20,0"
+                          HeightRequest="76">
+
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CurrenciesViewModel}}, Path=SelectCommand}"
+                                CommandParameter="{Binding .}" />
+                                </Grid.GestureRecognizers>
+
+                                <Border WidthRequest="46"
+                                HeightRequest="46"
+                                VerticalOptions="Center"
+                                StrokeThickness="0">
+                                    <Border.StrokeShape>
+                                        <Ellipse />
+                                    </Border.StrokeShape>
+                                    <Image Source="{Binding FlagUrl}" />
+                                </Border>
+
+                                <Label Grid.Column="1"
+                               Text="{Binding Name}"
+                               VerticalOptions="Center"
+                               TextColor="{StaticResource TextColor}" />
+
+                                <Label Grid.Column="2"
+                               Text="{Binding Code}"
+                               VerticalOptions="Center"
+                               TextColor="{StaticResource MutedColor}" />
+
+                                <Label Grid.Column="3"
+                               Text="☆"
+                               FontSize="27"
+                               TextColor="#9CA3AF"
+                               VerticalOptions="Center">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:CurrenciesViewModel}}, Path=FavoriteCommand}"
+                                    CommandParameter="{Binding .}" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
     </Grid>
 </ContentPage>

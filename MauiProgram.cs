@@ -1,4 +1,5 @@
-﻿using ConvertisseurDevises.Services;
+﻿
+using ConvertisseurDevises.Services;
 using ConvertisseurDevises.ViewModels;
 using ConvertisseurDevises.Views;
 using Microsoft.Extensions.Logging;
@@ -19,10 +20,23 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });
 
-        // ===== Injection de dépendances =====
-        builder.Services.AddSingleton<CurrencyService>();   // un seul service (cache des taux partagé)
+        // Services de l'application
+        builder.Services.AddSingleton<CurrencyService>();
+
+        // Base de données SQLite
+        builder.Services.AddSingleton(
+            new DatabaseService(
+                Path.Combine(
+                    FileSystem.AppDataDirectory,
+                    "users.db3")));
+
+        // ViewModels et pages
         builder.Services.AddSingleton<MainViewModel>();
         builder.Services.AddSingleton<MainPage>();
+
+        builder.Services.AddTransient<LoginPage>();
+        builder.Services.AddTransient<RegisterPage>();
+        builder.Services.AddTransient<HistoryPage>();
 
 #if DEBUG
         builder.Logging.AddDebug();
